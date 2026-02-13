@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EigenCompute — Ideas Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --surface: #111114;
+    --surface2: #18181c;
+    --border: #2a2a30;
+    --border-glow: #3a3a44;
+    --text: #e8e8ec;
+    --text-dim: #8888a0;
+    --text-muted: #555568;
+    --accent: #00ffa3;
+    --accent-dim: #00cc82;
+    --accent-glow: rgba(0, 255, 163, 0.08);
+    --warm: #ff6b4a;
+    --blue: #4a9eff;
+    --purple: #b44aff;
+    --yellow: #ffd84a;
+    --pink: #ff4a8d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Grid lines background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 80px 80px;
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-orb-1 { background: var(--accent); top: -200px; right: -100px; }
+  .glow-orb-2 { background: var(--purple); bottom: -200px; left: -100px; }
+
+  /* ---- HEADER ---- */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 40px 48px 0;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 60px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: logoPulse 3s ease-in-out infinite;
+  }
+
+  .logo-icon::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 3px;
+    animation: logoInner 3s ease-in-out infinite;
+  }
+
+  @keyframes logoPulse {
+    0%, 100% { box-shadow: 0 0 0px var(--accent); }
+    50% { box-shadow: 0 0 20px rgba(0,255,163,0.3); }
+  }
+
+  @keyframes logoInner {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(45deg) scale(0.8); }
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .logo-text span {
+    color: var(--accent);
+  }
+
+  .header-badge {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 100px;
+  }
+
+  .hero {
+    margin-bottom: 48px;
+  }
+
+  .hero h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(52px, 7vw, 96px);
+    font-weight: 400;
+    line-height: 1.0;
+    color: var(--text);
+    margin-bottom: 20px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+    position: relative;
+  }
+
+  .hero h1 em::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.3;
+  }
+
+  .hero-sub {
+    font-size: 14px;
+    color: var(--text-dim);
+    max-width: 580px;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 48px;
+    margin-bottom: 48px;
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'Instrument Serif', serif;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ---- CONTROLS ---- */
+  .controls {
+    position: relative;
+    z-index: 10;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 48px 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 260px;
+    position: relative;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 14px 20px 14px 44px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,163,0.08);
+  }
+
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  .search-box::before {
+    content: '⌕';
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 16px;
+    pointer-events: none;
+  }
+
+  .filter-btn {
+    padding: 12px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--border-glow);
+    color: var(--text);
+    background: var(--surface2);
+  }
+
+  .filter-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+    box-shadow: 0 0 16px rgba(0,255,163,0.06);
+  }
+
+  /* ---- GRID ---- */
+  .grid-wrapper {
+    position: relative;
+    z-index: 10;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 48px 80px;
+  }
+
+  .results-count {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+  }
+
+  /* ---- CARD ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    cursor: default;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.5s ease-out both;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent)), transparent);
+    opacity: 0;
+    transition: opacity 0.35s;
+  }
+
+  .card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+
+  .card-number {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .card-category {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .card-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .card-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    margin-bottom: 20px;
+    font-weight: 300;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .card-author {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .card-author span {
+    color: var(--text-dim);
+  }
+
+  .card-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .card-tag {
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* Category colors */
+  .cat-ai { background: rgba(74,158,255,0.1); color: #4a9eff; --card-accent: #4a9eff; }
+  .cat-gaming { background: rgba(255,77,141,0.1); color: #ff4d8d; --card-accent: #ff4d8d; }
+  .cat-trading { background: rgba(255,216,74,0.1); color: #ffd84a; --card-accent: #ffd84a; }
+  .cat-agents { background: rgba(0,255,163,0.1); color: #00ffa3; --card-accent: #00ffa3; }
+  .cat-privacy { background: rgba(180,74,255,0.1); color: #b44aff; --card-accent: #b44aff; }
+  .cat-defi { background: rgba(255,107,74,0.1); color: #ff6b4a; --card-accent: #ff6b4a; }
+  .cat-identity { background: rgba(0,200,255,0.1); color: #00c8ff; --card-accent: #00c8ff; }
+  .cat-data { background: rgba(255,160,74,0.1); color: #ffa04a; --card-accent: #ffa04a; }
+  .cat-other { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 40px;
+    position: relative;
+    animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .modal-close:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .modal-category {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+
+  .modal h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 32px;
+    font-weight: 400;
+    margin-bottom: 24px;
+    line-height: 1.2;
+  }
+
+  .modal-section {
+    margin-bottom: 24px;
+  }
+
+  .modal-section-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .modal-section p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    font-weight: 300;
+  }
+
+  .modal-meta {
+    display: flex;
+    gap: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .modal-meta span { color: var(--text-dim); }
+
+  /* ---- EMPTY STATE ---- */
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    font-weight: 300;
+  }
+
+  /* ---- SCROLLBAR ---- */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 768px) {
+    header, .controls, .grid-wrapper { padding-left: 20px; padding-right: 20px; }
+    .grid { grid-template-columns: 1fr; }
+    .stats-row { gap: 24px; flex-wrap: wrap; }
+    .hero h1 { font-size: 40px; }
+    .logo-row { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow-orb glow-orb-1"></div>
+<div class="glow-orb glow-orb-2"></div>
+
+<header>
+  <div class="logo-row">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div class="logo-text">Eigen<span>Compute</span></div>
+    </div>
+    <div class="header-badge">Ideas Lab v0.1</div>
+  </div>
+  <div class="hero">
+    <h1>Build the<br><em>Verifiable</em> Future</h1>
+    <p class="hero-sub">A curated catalog of ideas powered by TEEs, verifiable compute, and autonomous agents. Pick one, fork it, ship it.</p>
+  </div>
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-num" id="totalCount">0</div>
+      <div class="stat-label">Total Ideas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="catCount">0</div>
+      <div class="stat-label">Categories</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="authorCount">0</div>
+      <div class="stat-label">Contributors</div>
+    </div>
+  </div>
+</header>
+
+<div class="controls" id="controls">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search ideas, categories, authors...">
+  </div>
+</div>
+
+<div class="grid-wrapper">
+  <div class="results-count" id="resultsCount"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+const IDEAS = [
+  {id:1,name:"Sovereign Journalist",desc:"A completely independent agent running in a TEE that collects data & protects whistleblower identities. Anyone can verify their identity via ZKTLS without the journalist ever knowing who they are.",problem:"Whistleblowers rely on journalists' moral integrity to protect their identity. History shows that trust gets broken — journalists sell out sources for money or connections.",solution:"Agent runs in a TEE on EigenCompute. Whistleblowers verify employment via ZKTLS (email/HR provider). The agent interviews, investigates, and publishes — all immutable on-chain. No one can censor or de-anonymize.",value:"Completely verified, uncensorable news. Journalists can monetize via ads while maintaining source protection that's cryptographic, not just a promise.",cat:"Verifiable News",author:"Gajesh Naik"},
+  {id:2,name:"Memecoin Allocation",desc:"Allocate memecoins based on social signals with verifiable fairness through EigenCompute + EigenAI.",problem:"Memecoin allocation on social platforms isn't fair or verifiable — insiders and bots game the system.",solution:"Use verifiable memecoin allocation through EigenCompute + EigenAI to ensure transparent, auditable distribution.",value:"Core verifiable infrastructure that removes gaming and ensures fair token distribution.",cat:"Memecoins",author:"Vignesh Muralidharan"},
+  {id:3,name:"Private Advanced Vaults",desc:"DeFi vaults with advanced computation running in trusted, private environments via EigenCompute.",problem:"Current vaults have limited computational ability. Offchain computation isn't trusted, creating a scalability ceiling.",solution:"Use EigenCompute to run more advanced vault strategies in a trusted, attested environment.",value:"Building trust around complex offchain computation, unlocking new vault strategies at scale.",cat:"DeFi",author:"Vignesh Muralidharan"},
+  {id:4,name:"Verifiable Debate",desc:"Two or more parties argue while an AI judge scores them against a transparent rubric. Every step runs in attested compute with tamper-evident records.",problem:"Internet debates are decided by vibes, moderator bias, and brigading. No audit trail, no way to settle bets or governance decisions.",solution:"Run judge and rubric inside EigenCompute TEEs. Publish prompt, inputs, and scoring function. Produce signed attestations tied to on-chain payouts, bounties, or governance.",value:"Fair, replayable outcomes you can pay on. Drop-in primitive for truth-finding, competitions, and procurement decisions.",cat:"Gaming",author:"Gajesh Naik"},
+  {id:5,name:"OpenFront w/ Markets",desc:"Verifiable game execution with built-in prediction markets and autonomous tournament payouts for a real-time strategy game.",problem:"Complex high-stakes matches have no trust-minimized way to settle wagers. Reports of scripts/cheats and opaque moderation make betting risky.",solution:"Run match simulation and bet-settlement in EigenCompute. Emit per-tick hashes and signed results. Auto-pay bets on-chain with spectator feeds and granular markets.",value:"Anti-cheat, provably fair payouts without trusting a mod. Real money tournaments and side-markets on trade routes, naval pushes, and nukes.",cat:"Gaming",author:"Gautham & Gajesh Naik"},
+  {id:6,name:"Compatibility Match",desc:"Private agent that reads ChatGPT context from both parties to find shared interests, icebreakers, and compatibility scores — as partner, friend, or colleague.",problem:"People have rich context scattered across apps but it's private. Matching requires oversharing raw data or trusting black-box models. Both sides worry about leaks and manipulation.",solution:"Run matching computation in EigenCompute with consent-gated access to context. Output compatibility scores and icebreakers without exposing raw data.",value:"High-signal intros with privacy guarantees. No oversharing, no creepiness, scalable for organizations and dating platforms.",cat:"Dating / Social",author:"Gautham, Andrew Miller, Xyn"},
+  {id:7,name:"Private Code Reviewer",desc:"Private agent that reviews code for backdoors and rug-pull functionality while keeping the codebase completely confidential.",problem:"Teams keep codebases private for security and IP, but users must trust the people behind the code — creating massive counterparty risk (e.g., Hyperliquid).",solution:"Upload code to a private agent in EigenCompute. It reviews for backdoors and exploits, outputs an audit report, and the code never leaves the TEE.",value:"Removes counterparty risk without disclosing business logic. Trust the math, not the team.",cat:"Security & IP",author:"Gajesh Naik"},
+  {id:8,name:"Verifiable Model Evals",desc:"Upload model weights privately to the platform. We run standardized evals without ever leaking your weights.",problem:"Model eval claims are hard to trust — even OpenAI and Anthropic get questioned. But creators don't want to release weights just to prove performance.",solution:"Upload your model into EigenCompute. The program runs evals and signs off on outputs. Private by default, verifiable by design.",value:"Eliminate trust issues with providers. Privacy-preserving evaluation that anyone can believe.",cat:"AI",author:"Gajesh Naik"},
+  {id:9,name:"Airline Miles Marketplace",desc:"Secure escrow environment for trading airline miles between buyers and sellers without counterparty risk.",problem:"Selling airline miles OTC has massive counterparty and trust risk — no guarantee of delivery or payment.",solution:"Reverse-engineer airline APIs, build autonomous transfer programs in EigenCompute. Acts as escrow between buyer and seller.",value:"Eliminates counterparty risk in a fragmented, high-value market.",cat:"Trading",author:"Gajesh Naik"},
+  {id:10,name:"Dark Pools",desc:"TEE-powered dark pool for private large-block trading without information leakage.",problem:"Dark pools handle 40% of securities block trades, but crypto alternatives only do ~$1M in 24hr volume despite liquid assets.",solution:"Run the matching engine inside TEEs on EigenCompute. Orders are hidden, matched privately, and settled on-chain.",value:"Private trading without revealing your \"tell\" — no information leakage, no front-running.",cat:"Trading",author:"Sreeram Kannan"},
+  {id:11,name:"Sovereign AI Scientist",desc:"Autonomous discovery agent that executes committed research programs with verifiable compute guarantees.",problem:"Labs struggle to raise because backers can't verify the work. Funds risk being misused — classic counterparty risk.",solution:"Fund an agent that provably does what it's funded to do. Verifiable compute ensures the research program is executed as committed.",value:"Removes counterparty risk and unlocks new capital formation for science.",cat:"Science",author:"Gajesh Naik"},
+  {id:12,name:"Attribute-Gated Distribution",desc:"Privacy-preserving drops and credits gated on verifiable attributes — 'India-only,' '1-year Uber user,' 'GitHub power user.'",problem:"Eligibility checks leak PII or get spoofed. Brands face fraud, compliance pain, and low-signal targeting.",solution:"Evaluate attributes privately inside EigenCompute against trusted data sources. Output a signed yes/no without exposing raw data.",value:"Precise, privacy-preserving distribution with lower fraud and higher ROI.",cat:"Rewards",author:"Sreeram Kannan"},
+  {id:13,name:"Identity Incumbering",desc:"Granular, revocable delegation — let agents or people act on your TikTok, GitHub, airline accounts with per-action caps and audit trails.",problem:"Today means password sharing or brittle scripts. No per-action caps, time windows, or audit. Hard to revoke, often against ToS.",solution:"Issue scoped 'action tokens' via EigenCompute — e.g., '@alice may like ≤50 posts/day on TikTok 9-6 PT' — with per-action receipts and instant revoke.",value:"Safe, scalable delegation: no credential sharing, clear limits, one-click revoke, platform-friendly.",cat:"Identity",author:"Sreeram Kannan"},
+  {id:14,name:"New Lotto",desc:"A hot-cold lottery where a TEE generates a sealed target number. Players guess with distance hints. Near-misses raise buy-ins globally. First exact match wins the pool.",problem:"Operators can change targets after seeing guesses. Dynamic pricing is exploitable. No tamper-evident trail for fairness.",solution:"TEE-sealed game logic with hardware RNG, deterministic hints via published metrics, rule-bound dynamic pricing, and enclave-signed audit trails.",value:"Provably fair guessing game with real suspense, bigger pots, and no house meddling.",cat:"Private Casino",author:"Sreeram Kannan"},
+  {id:15,name:"Private AI Property Verifier",desc:"Adversarial tester probes your model for properties (bias, PII leaks, jailbreak resistance) and returns signed pass/fail — weights never leave the TEE.",problem:"Model claims are unproven. Sharing eval sets leaks IP. Vendors cherry-pick. Buyers can't verify without exposing sensitive data.",solution:"Run model + adversarial tester inside EigenCompute. Auto-generate challenges, score against property spec, emit attested report.",value:"Prove properties without revealing models or data. Unlock procurement and regulated use.",cat:"AI",author:"Sreeram Kannan"},
+  {id:16,name:"Custom AI Judges",desc:"Drop-in judge agents for singing competitions, TV talent shows, debates, and food scoring — each with transparent, attested rubrics.",problem:"Human/online judging is subjective, slow, and gamed by brigading. Platforms can't prove rubric adherence.",solution:"Run domain-tuned judge ensembles inside EigenCompute — pitch, sync, claim-evidence analysis, plating — with signed scorecards.",value:"Consistent, fair, auditable results in real time at lower cost.",cat:"AI Judges",author:"Sreeram Kannan"},
+  {id:17,name:"Prediction Market Trader",desc:"Autonomous agent that places and hedges positions on prediction markets using a declared, frozen mandate.",problem:"Pooled capital + qualitative strategies = drift, misuse, and over-risk with no visibility.",solution:"Run agent inside EigenCompute with frozen spec. Every order emits signed receipt of inputs, checks, and rationale.",value:"Pooled capital with governance-grade guarantees. No drift, no misuse, audited PnL.",cat:"Agents",author:"Sreeram Kannan"},
+  {id:18,name:"Verifiable Trading Agents",desc:"Framework to launch any automated strategy with enforceable risk limits and continuous audit.",problem:"Trading bots are black boxes. Allocators can't prove what code ran or whether guardrails were respected.",solution:"Deploy on EigenCompute with budget caps, venue allowlists, kill-switch, and continuous telemetry.",value:"Allocate to bots you can prove are in-policy. Unlock institutional capital.",cat:"Agents",author:"Sreeram Kannan"},
+  {id:19,name:"Agent-To-Agent Combat",desc:"'Hunger Games' for agents — plan, act, and adapt under shared rules with scarce resources and built-in markets.",problem:"Competitions get gamed: hidden advantages, covert coordination, unverifiable plays.",solution:"Run matches in identical, resource-metered sandboxes on EigenCompute with attested scorecards and built-in betting.",value:"Fair, replayable tournaments with trustable leaderboards and auto-triggered payouts.",cat:"Gaming & Agents",author:"Sreeram Kannan"},
+  {id:20,name:"Verifiable Intent Engines",desc:"Natural language → verified action: 'book NYC under $400,' 'rebalance 60/40,' 'tip top 3 contributors $10.'",problem:"Server-side NL→action touches money and accounts. Users can't verify what actually executes.",solution:"Compile intents into explicit plans inside EigenCompute with per-step receipts, strict allowlists, and quotas.",value:"Quick message automation without surprises. Compliant, auditable actions.",cat:"Agents & Trading",author:"Sreeram Kannan"},
+  {id:21,name:"Copytrading Agent",desc:"Mirror other agents' trades with natural-language policy controls and revenue sharing for data/signal providers.",problem:"Copytrading is opaque — signals drift, risk caps aren't enforced, no proof of execution.",solution:"Use A2A protocol. User initializes agent with fixed parameters for operation and information sharing with other agents at set costs.",value:"Trustable mirroring with guardrails. No shadow trades, no overexposure, auditable PnL.",cat:"Agents & Trading",author:"Sreeram Kannan"},
+  {id:22,name:"English Language Contracts",desc:"Create enforceable conditional payouts from plain English — 'I'll pay $10 if the US wins the final.'",problem:"Plain-English deals are ambiguous and unenforceable. Parsing to code is lossy, oracles get disputed.",solution:"Two parties commit to natural language contract → lock money → auto-disperse when condition is met.",value:"Zero-friction agreements people understand with automatic, dispute-light settlement.",cat:"Agents",author:"Sreeram Kannan"},
+  {id:23,name:"Incentivised Data Sharing",desc:"Let sensitive data owners (genomics, medical, financial) earn per-query revenue while raw data never leaves the TEE.",problem:"Sharing copies leaks privacy/IP. Buyers doubt authenticity. Sellers get only one-off payments.",solution:"Data stays in EigenCompute. Queries run against it privately. Payment flows per access based on owner's rules.",value:"Ongoing revenue without exposure. Authenticated results for buyers. No custody risk.",cat:"Data",author:"Sreeram Kannan"},
+  {id:24,name:"Data Attribution Quests",desc:"Bounty system: improve this dataset against a private benchmark, earn rewards. The benchmark stays hidden to prevent gaming.",problem:"Data quality improvement is hard to incentivize when benchmarks leak and get gamed.",solution:"Private benchmarks in EigenCompute. Contributors submit improvements, attested scoring determines rewards.",value:"Fair, gamification-resistant data improvement with verifiable attribution.",cat:"Data",author:"Sreeram Kannan"},
+  {id:25,name:"Information Curator Agent",desc:"Agent that crawls HackerNews, BBC, Twitter and curates valuable information in private state — perfect for A2A data markets.",problem:"Information overload — too much happening every millisecond, no trusted curation.",solution:"Agent curates in private state inside EigenCompute. Other agents can purchase access to trending data, summaries, signals.",value:"Valuable curated intelligence as a service for both humans and agents.",cat:"Agents",author:"Gajesh Naik"},
+  {id:26,name:"Agent-To-Agent Negotiation",desc:"Agents holding private user data (max price, income, credit score) negotiate with other agents without revealing underlying data.",problem:"Negotiation requires sharing sensitive context. Current approaches either overshare or underperform.",solution:"Agents negotiate within EigenCompute, using private data for decision-making without exposing it to counterparties.",value:"Optimal deal-making with full privacy. Agents can negotiate authentically without data leaks.",cat:"Agents",author:"Vignesh Muralidharan"},
+  {id:27,name:"Insurance Adjudication",desc:"Pre-agreed AI claims judge that evaluates evidence against policy and computes payout — auto, health, travel, warranty.",problem:"Claims are slow, opaque, and perceived as biased. Adjuster variance and fraud drive disputes and cost.",solution:"Run the judge in an attested enclave. Lock policy + model version, ingest docs with consent, emit signed decision and rationale.",value:"Fast, fair, auditable payouts with privacy. Lower loss-adjustment expense.",cat:"AI Judge",author:"Sreeram Kannan"},
+  {id:28,name:"Carbon Offset Mapper",desc:"Satellite imagery analyzed by verifiable AI to verify carbon offset claims — proof that offsets are real.",problem:"Carbon offset verification is opaque and easily gamed. No trustworthy automated verification.",solution:"Satellite takes pictures, verifiable AI in EigenCompute analyzes and attests to offset validity.",value:"Trustworthy, automated carbon offset verification at scale.",cat:"Science",author:"Sreeram Kannan"},
+  {id:29,name:"MCP Marketplace",desc:"Open marketplace for API keys — seeded in private TEEs, revenue dispersed to key holders on usage.",problem:"API key sharing is risky and untrusted. No good marketplace for compute/API access.",solution:"API keys live in EigenCompute TEEs. Usage is metered and revenue flows to key holders automatically.",value:"Trustless API marketplace with automatic revenue sharing.",cat:"Tooling",author:"Gajesh Naik"},
+  {id:30,name:"Private KYC",desc:"Know Your Customer verification where personal data never leaves the trusted environment.",problem:"KYC processes expose sensitive personal data to multiple parties and databases.",solution:"Run KYC verification inside EigenCompute. Data stays private, only pass/fail attestation is shared.",value:"Compliance without privacy sacrifice.",cat:"Privacy",author:"Sreeram Kannan"},
+  {id:31,name:"Private Verifiable Surveillance",desc:"Government cameras that only release footage when crime is detected — data can only be used for one purpose.",problem:"Surveillance cameras collect everything. Citizens don't trust that data won't be misused for mass surveillance.",solution:"Camera feeds processed in EigenCompute. Only flagged incidents produce output. All other footage is provably inaccessible.",value:"Public safety without mass surveillance. Purpose-limited data usage with cryptographic guarantees.",cat:"Privacy",author:"Sreeram Kannan"},
+  {id:32,name:"Verifiable Credit Score",desc:"AI analyzes your financial data and produces a verifiable credit score — transparent methodology, private data.",problem:"Credit scoring is a black box controlled by a few companies. Methodology is opaque, data handling is questionable.",solution:"Run credit scoring AI in EigenCompute. Your data stays private, methodology is attested, score is verifiable.",value:"Transparent, trustworthy credit scoring without data exposure.",cat:"Privacy",author:"Sreeram Kannan"},
+  {id:33,name:"AI Governance Proxies",desc:"AI that learns your values through questions, then votes on corporate governance proposals on your behalf — researching each proposal first.",problem:"People can't make governance decisions daily. They lack knowledge and time for corporate proposals.",solution:"AI proxy in EigenCompute learns your values, researches proposals, and casts informed votes as your delegate.",value:"Informed governance participation without the time commitment.",cat:"Governance",author:"Sreeram Kannan"},
+  {id:34,name:"Private Database",desc:"SQLite or Postgres running on EigenCompute — only truly authorized users can access, with cryptographic proof.",problem:"Database access control relies on trust in administrators and platform operators.",solution:"Run database in EigenCompute TEE. Access is cryptographically gated. Even the platform operator can't read your data.",value:"True data sovereignty with zero-trust access control.",cat:"Privacy",author:"Sreeram Kannan"},
+  {id:35,name:"Transaction Pre-Screener",desc:"Transactions route through EigenCompute for risk analysis before hitting the blockchain — catching exploits and errors.",problem:"Malicious or erroneous transactions hit the blockchain before anyone can review them.",solution:"Route transactions through EigenCompute for automated risk analysis and screening before on-chain submission.",value:"Pre-emptive security layer for all blockchain transactions.",cat:"Security & IP",author:"Sreeram Kannan"},
+  {id:36,name:"Private Security Agent",desc:"Give your code to a security agent that audits it without the agent owner being able to see or steal your code.",problem:"Security auditors see your code and could exploit it or steal your IP.",solution:"Code goes into EigenCompute. Security agent runs analysis. Audit report comes out. No human ever sees the code.",value:"Security audits without IP exposure or exploitation risk.",cat:"Security & IP",author:"Sreeram Kannan"},
+  {id:37,name:"Governance Rights Agent",desc:"Auction off your shareholder governance/voting rights to willing buyers with verifiable vote execution.",problem:"Selling governance rights is high-effort with no trust mechanism for vote execution.",solution:"User gives login to voting portal. Agent facilitates sale to buyers and casts votes as purchased — all attested.",value:"EigenCompute removes counterparty risk. Agent proves votes were cast correctly.",cat:"Governance",author:"Gautham"},
+  {id:38,name:"Verifiable GoFundMe",desc:"Crowdfunding with verifiable fund usage — donors can prove their money was spent as promised.",problem:"Crowdfunding lacks accountability. Donors can't verify how funds are actually used.",solution:"Fund management in EigenCompute with attested spending records and purpose verification.",value:"Trust in crowdfunding through cryptographic accountability.",cat:"DeFi",author:""},
+  {id:39,name:"Trading Vaults on HL",desc:"Advanced trading vaults running on Hyperliquid with verifiable strategy execution.",problem:"Trading vault strategies are opaque and unverifiable on existing platforms.",solution:"Run vault strategies in EigenCompute with attested execution on Hyperliquid.",value:"Verifiable, transparent vault strategies for DeFi traders.",cat:"DeFi",author:""},
+  {id:40,name:"Minecraft Servers",desc:"Verifiable Minecraft server execution — anti-cheat, fair play, and attested game state.",problem:"Minecraft servers can be manipulated by operators. No proof of fair play.",solution:"Run Minecraft servers in EigenCompute TEEs with attested game state.",value:"Provably fair gaming with no operator manipulation.",cat:"Gaming",author:""},
+  {id:41,name:"Gift Card Liquidity",desc:"Liquidkey for gift cards — trade and redeem gift cards with no counterparty risk.",problem:"Gift card trading is rife with fraud and counterparty risk.",solution:"Gift card balances verified and traded through EigenCompute escrow.",value:"Safe, trustless gift card marketplace.",cat:"Trading",author:""},
+  {id:42,name:"Access Control of Data",desc:"Fine-grained, cryptographically enforced access control for sensitive data.",problem:"Traditional access control relies on platform trust and can be bypassed.",solution:"Data access gated through EigenCompute with attested authorization checks.",value:"True zero-trust data access control.",cat:"Privacy",author:""},
+  {id:43,name:"Verifiable Pedia",desc:"Community-funded wikipedia where an AI agent curates and verifies content — decisions are attested and auditable.",problem:"Wikipedia relies on volunteer editors with varying quality and bias. No verifiable editorial process.",solution:"AI agent in EigenCompute curates content with community funding. All editorial decisions are attested.",value:"Trustworthy, community-governed knowledge base with verifiable editorial integrity.",cat:"Data",author:""},
+  {id:44,name:"Verifiable News Synthesizer",desc:"Like Grok's Twitter summaries but aggregating from multiple models verifiably — no single-source bias.",problem:"News aggregation from single models introduces bias and unverifiable summarization.",solution:"Multiple models in EigenCompute aggregate and cross-verify news, producing attested summaries.",value:"Multi-model, verifiable news synthesis without single-point bias.",cat:"Data",author:""}
+];
+
+function getCatClass(cat) {
+  const c = cat.toLowerCase();
+  if (c.includes('ai') || c.includes('model') || c.includes('science')) return 'cat-ai';
+  if (c.includes('game') || c.includes('casino') || c.includes('lotto')) return 'cat-gaming';
+  if (c.includes('trad') || c.includes('memecoin') || c.includes('reward')) return 'cat-defi';
+  if (c.includes('agent') || c.includes('tooling')) return 'cat-agents';
+  if (c.includes('privacy') || c.includes('private') || c.includes('surveil')) return 'cat-privacy';
+  if (c.includes('defi') || c.includes('vault') || c.includes('fund')) return 'cat-defi';
+  if (c.includes('identity') || c.includes('kyc') || c.includes('credit')) return 'cat-identity';
+  if (c.includes('data') || c.includes('news') || c.includes('pedia')) return 'cat-data';
+  if (c.includes('govern') || c.includes('social') || c.includes('dating')) return 'cat-identity';
+  if (c.includes('secur')) return 'cat-purple';
+  return 'cat-other';
+}
+
+// Get unique categories
+const categories = [...new Set(IDEAS.map(i => i.cat))].sort();
+const authors = [...new Set(IDEAS.filter(i => i.author).map(i => i.author))];
+
+// Fill stats
+document.getElementById('totalCount').textContent = IDEAS.length;
+document.getElementById('catCount').textContent = categories.length;
+document.getElementById('authorCount').textContent = authors.length;
+
+// Build filter buttons
+const controls = document.getElementById('controls');
+const allBtn = document.createElement('button');
+allBtn.className = 'filter-btn active';
+allBtn.textContent = 'All';
+allBtn.dataset.cat = 'all';
+controls.appendChild(allBtn);
+
+// Group similar categories
+const catGroups = {
+  'AI': ['AI', 'AI Judges', 'AI Judge'],
+  'Agents': ['Agents', 'Agents & Trading', 'Gaming & Agents'],
+  'Gaming': ['Gaming', 'Private Casino'],
+  'Trading': ['Trading', 'Memecoins'],
+  'Privacy': ['Privacy', 'Security & IP'],
+  'DeFi': ['DeFi', 'Rewards'],
+  'Data': ['Data', 'Verifiable News'],
+  'Identity': ['Identity', 'Dating / Social', 'Governance'],
+  'Science': ['Science'],
+  'Tooling': ['Tooling']
+};
+
+Object.keys(catGroups).forEach(label => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  btn.textContent = label;
+  btn.dataset.cat = label;
+  controls.appendChild(btn);
+});
+
+let activeFilter = 'all';
+let searchQuery = '';
+
+controls.addEventListener('click', e => {
+  if (!e.target.classList.contains('filter-btn')) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  activeFilter = e.target.dataset.cat;
+  render();
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.toLowerCase();
+  render();
+});
+
+function getFiltered() {
+  return IDEAS.filter(idea => {
+    const matchesFilter = activeFilter === 'all' || (catGroups[activeFilter] && catGroups[activeFilter].some(c => idea.cat.includes(c) || c.includes(idea.cat)));
+    const matchesSearch = !searchQuery ||
+      idea.name.toLowerCase().includes(searchQuery) ||
+      idea.desc.toLowerCase().includes(searchQuery) ||
+      idea.cat.toLowerCase().includes(searchQuery) ||
+      idea.author.toLowerCase().includes(searchQuery);
+    return matchesFilter && matchesSearch;
+  });
+}
+
+function render() {
+  const filtered = getFiltered();
+  const grid = document.getElementById('grid');
+  document.getElementById('resultsCount').textContent = `${filtered.length} idea${filtered.length !== 1 ? 's' : ''} found`;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">∅</div><p>No ideas match your search. Try different terms.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((idea, i) => `
+    <div class="card" style="animation-delay: ${i * 0.04}s; --card-accent: ${getAccentColor(idea.cat)}" onclick="openModal(${idea.id})">
+      <div class="card-header">
+        <span class="card-number">${String(idea.id).padStart(2, '0')}</span>
+        <span class="card-category ${getCatClass(idea.cat)}">${idea.cat}</span>
+      </div>
+      <div class="card-title">${idea.name}</div>
+      <div class="card-desc">${idea.desc}</div>
+      <div class="card-footer">
+        <span class="card-author">${idea.author ? `by <span>${idea.author}</span>` : '<span style="opacity:0.3">unattributed</span>'}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getAccentColor(cat) {
+  const c = cat.toLowerCase();
+  if (c.includes('ai') || c.includes('science')) return '#4a9eff';
+  if (c.includes('game') || c.includes('casino')) return '#ff4d8d';
+  if (c.includes('trad') || c.includes('memecoin') || c.includes('defi')) return '#ffd84a';
+  if (c.includes('agent') || c.includes('tooling')) return '#00ffa3';
+  if (c.includes('privacy') || c.includes('secur')) return '#b44aff';
+  if (c.includes('data') || c.includes('news')) return '#ffa04a';
+  if (c.includes('identity') || c.includes('govern') || c.includes('dating')) return '#00c8ff';
+  return '#00ffa3';
+}
+
+function openModal(id) {
+  const idea = IDEAS.find(i => i.id === id);
+  if (!idea) return;
+  const modal = document.getElementById('modal');
+  modal.innerHTML = `
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <span class="modal-category ${getCatClass(idea.cat)}">${idea.cat}</span>
+    <h2>${idea.name}</h2>
+    ${idea.desc ? `<div class="modal-section"><div class="modal-section-label">Description</div><p>${idea.desc}</p></div>` : ''}
+    ${idea.problem ? `<div class="modal-section"><div class="modal-section-label">Problem</div><p>${idea.problem}</p></div>` : ''}
+    ${idea.solution ? `<div class="modal-section"><div class="modal-section-label">Solution</div><p>${idea.solution}</p></div>` : ''}
+    ${idea.value ? `<div class="modal-section"><div class="modal-section-label">Value Proposition</div><p>${idea.value}</p></div>` : ''}
+    <div class="modal-meta">
+      <div>Idea <span>#${String(idea.id).padStart(2,'0')}</span></div>
+      ${idea.author ? `<div>by <span>${idea.author}</span></div>` : ''}
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+render();
+</script>
+</body>
+</html>
