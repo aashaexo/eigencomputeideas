@@ -84,57 +84,8 @@
   .logo-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-bottom: 60px;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    border: 2px solid var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    animation: logoPulse 3s ease-in-out infinite;
-  }
-
-  .logo-icon::after {
-    content: '';
-    width: 12px;
-    height: 12px;
-    background: var(--accent);
-    border-radius: 3px;
-    animation: logoInner 3s ease-in-out infinite;
-  }
-
-  @keyframes logoPulse {
-    0%, 100% { box-shadow: 0 0 0px var(--accent); }
-    50% { box-shadow: 0 0 20px rgba(0,255,163,0.3); }
-  }
-
-  @keyframes logoInner {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(45deg) scale(0.8); }
-  }
-
-  .logo-text {
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--text);
-  }
-
-  .logo-text span {
-    color: var(--accent);
   }
 
   .header-badge {
@@ -599,10 +550,6 @@
 
 <header>
   <div class="logo-row">
-    <div class="logo">
-      <div class="logo-icon"></div>
-      <div class="logo-text">Eigen<span>Compute</span></div>
-    </div>
     <div class="header-badge">Ideas Lab v0.1</div>
   </div>
   <div class="hero">
